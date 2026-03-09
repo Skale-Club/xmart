@@ -154,6 +154,230 @@
     color: var(--text);
 }
 
+/* ── Tab header (cameras, etc.) ── */
+.tabHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.tabSubtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.tabActions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.viewToggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.viewBtn {
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.viewBtn:hover {
+    background: var(--surface-light);
+    color: var(--text);
+}
+
+.viewBtnActive {
+    background: var(--primary);
+    color: white;
+}
+
+.addBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    white-space: nowrap;
+}
+
+.addBtn:hover {
+    background: var(--primary-dark);
+}
+
+/* ── Camera grid ── */
+.cameraGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+.cameraSingle {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 900px;
+}
+
+.cameraCard {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    overflow: hidden;
+}
+
+.cameraCard:hover .cameraDeleteBtn {
+    opacity: 1;
+}
+
+.cameraDeleteBtn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: none;
+    background: var(--danger);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.cameraThumbs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.cameraThumb {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.cameraThumb:hover {
+    border-color: var(--primary);
+    color: var(--text);
+}
+
+.cameraThumbActive {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* ── Empty state ── */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 60px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    gap: 12px;
+}
+
+.emptyIcon {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: var(--surface-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.emptyTitle {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.emptyText {
+    color: var(--text-muted);
+    font-size: 14px;
+    max-width: 360px;
+}
+
+.setupGuide {
+    margin-top: 16px;
+    text-align: left;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    max-width: 480px;
+    width: 100%;
+}
+
+.setupGuide h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+}
+
+.setupGuide ol {
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setupGuide li {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.setupGuide code {
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text);
+}
+
 @media (max-width: 900px) {
     .main {
         margin-left: 0;

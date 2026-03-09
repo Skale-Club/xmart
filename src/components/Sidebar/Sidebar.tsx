@@ -8,7 +8,8 @@ import {
     Settings,
     Menu,
     X,
-    Plus
+    Plus,
+    Camera,
 } from 'lucide-react';
 import styles from './Sidebar.module.css';
 
@@ -18,15 +19,22 @@ interface SidebarProps {
     onAddDevice?: () => void;
 }
 
+const ADD_LABELS: Record<string, string> = {
+    cameras: 'Add Camera',
+};
+
 export default function Sidebar({ activeTab, onTabChange, onAddDevice }: SidebarProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     const menuItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: <Home size={20} /> },
-        { id: 'devices', label: 'Devices', icon: <Lightbulb size={20} /> },
+        { id: 'dashboard',   label: 'Dashboard',   icon: <Home size={20} /> },
+        { id: 'devices',     label: 'Devices',     icon: <Lightbulb size={20} /> },
+        { id: 'cameras',     label: 'Cameras',     icon: <Camera size={20} /> },
         { id: 'automations', label: 'Automations', icon: <Clock size={20} /> },
-        { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
+        { id: 'settings',    label: 'Settings',    icon: <Settings size={20} /> },
     ];
+
+    const addLabel = ADD_LABELS[activeTab] ?? 'Add Device';
 
     return (
         <>
@@ -64,7 +72,7 @@ export default function Sidebar({ activeTab, onTabChange, onAddDevice }: Sidebar
                 <div className={styles.footer}>
                     <button className={styles.addButton} onClick={onAddDevice}>
                         <Plus size={20} />
-                        <span>Add Device</span>
+                        <span>{addLabel}</span>
                     </button>
                 </div>
             </aside>

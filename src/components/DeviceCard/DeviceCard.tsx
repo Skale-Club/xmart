@@ -11,7 +11,8 @@ import {
     Tv,
     Gauge,
     Power,
-    Star
+    Star,
+    Trash2,
 } from 'lucide-react';
 import { Device } from '@/types/device';
 import { useDeviceStore } from '@/store/deviceStore';
@@ -34,7 +35,7 @@ const deviceIcons: Record<string, React.ReactNode> = {
 };
 
 export default function DeviceCard({ device, onClick }: DeviceCardProps) {
-    const { setDeviceState, toggleFavorite, favoriteDeviceIds } = useDeviceStore();
+    const { setDeviceState, toggleFavorite, removeDevice, favoriteDeviceIds } = useDeviceStore();
     const isFavorite = favoriteDeviceIds.includes(device.id);
 
     const handleToggle = (e: React.MouseEvent) => {
@@ -49,6 +50,13 @@ export default function DeviceCard({ device, onClick }: DeviceCardProps) {
     const handleFavorite = (e: React.MouseEvent) => {
         e.stopPropagation();
         toggleFavorite(device.id);
+    };
+
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (confirm(`Remove "${device.name}"?`)) {
+            removeDevice(device.id);
+        }
     };
 
     const isOn = device.state.on !== undefined
@@ -102,8 +110,16 @@ export default function DeviceCard({ device, onClick }: DeviceCardProps) {
                     <button
                         className={`${styles.favoriteBtn} ${isFavorite ? styles.favorited : ''}`}
                         onClick={handleFavorite}
+                        title="Favorite"
                     >
                         <Star size={18} fill={isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                    <button
+                        className={styles.deleteBtn}
+                        onClick={handleDelete}
+                        title="Remove device"
+                    >
+                        <Trash2 size={16} />
                     </button>
                     <span className={`status-dot ${device.status}`} />
                 </div>

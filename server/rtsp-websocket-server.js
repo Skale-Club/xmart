@@ -18,6 +18,12 @@ const http = require('http');
 const HTTP_PORT = 9997;
 const WS_PORT_START = 9001; // ports 9001, 9002, 9003... assigned per camera
 
+let ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
+try {
+  // Bundled ffmpeg binary fallback for environments without system ffmpeg.
+  ffmpegPath = ffmpegPath === 'ffmpeg' ? require('ffmpeg-static') || 'ffmpeg' : ffmpegPath;
+} catch (_) {}
+
 let nextWsPort = WS_PORT_START;
 // Map<cameraId, { stream, wsPort, name }>
 const activeStreams = new Map();
@@ -74,12 +80,14 @@ const server = http.createServer((req, res) => {
           name: name || id,
           streamUrl: rtspUrl,
           wsPort,
+          ffmpegPath,
           ffmpegOptions: {
             '-stats': '',
-            '-r': 15,
+            // mpeg1video accepts a limited set of framerates; 25 is broadly compatible.
+            '-r': 25,
             '-s': '640x360',
-            '-preset': 'ultrafast',
-            '-tune': 'zerolatency',
+            // JSMpeg in this app is video-only.
+            '-an': '',
             '-b:v': '512k',
           },
         });
@@ -124,6 +132,7 @@ server.listen(HTTP_PORT, () => {
   console.log(` Control API : http://localhost:${HTTP_PORT}`);
   console.log(` Health      : http://localhost:${HTTP_PORT}/health`);
   console.log(` WS ports    : ${WS_PORT_START}+  (one per camera)`);
+  console.log(` FFmpeg      : ${ffmpegPath}`);
   console.log('=================================\n');
   console.log('Waiting for camera registrations...\n');
 });

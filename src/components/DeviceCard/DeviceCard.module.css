@@ -68,6 +68,29 @@
     color: var(--warning);
 }
 
+.deleteBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    opacity: 0;
+}
+
+.card:hover .deleteBtn {
+    opacity: 1;
+}
+
+.deleteBtn:hover {
+    color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
 .content {
     flex: 1;
 }

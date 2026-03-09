@@ -8,53 +8,79 @@ interface TapoCameraStreamProps {
   width?: number;
   height?: number;
   autoplay?: boolean;
+  onlyWhenActive?: boolean;
 }
 
-const RELAY_SERVER = 'http://localhost:9997';
+const RELAY_API_BASE = '/api/relay';
 
-type StreamStatus = 'idle' | 'registering' | 'connecting' | 'playing' | 'error' | 'stalled';
+type StreamStatus = 'idle' | 'registering' | 'connecting' | 'playing' | 'error' | 'stalled' | 'sleeping';
 
 export default function TapoCameraStream({
   camera,
   width = 640,
   height = 360,
   autoplay = true,
+  onlyWhenActive = false,
 }: TapoCameraStreamProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<any>(null);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<StreamStatus>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const isStartingRef = useRef(false);
 
   const startStream = async () => {
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
     setStatus('registering');
     setErrorMsg(null);
 
-    // 1. Register camera with relay server → get WS port
-    let wsPort: number;
+    // 1. Register camera with relay server -> get WS port
+    let wsPort: number = 0;
     try {
-      const res = await fetch(`${RELAY_SERVER}/camera`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: camera.id,
-          name: camera.name,
-          rtspUrl: getRTSPUrl(camera),
-        }),
-      });
+      let lastErr = '';
+      let registered = false;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `Server responded with ${res.status}`);
+      for (let attempt = 0; attempt < 2 && !registered; attempt++) {
+        const res = await fetch(`${RELAY_API_BASE}/camera`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: camera.id,
+            name: camera.name,
+            rtspUrl: getRTSPUrl(camera),
+          }),
+        });
+
+        if (res.ok) {
+          ({ wsPort } = await res.json());
+          registered = true;
+          break;
+        }
+
+        const err = await res.json().catch(() => ({ error: `Server responded with ${res.status}` }));
+        lastErr = err.error || `Server responded with ${res.status}`;
+
+        if (attempt === 0 && lastErr.toLowerCase().includes('could not reach relay')) {
+          await fetch('/api/relay/start', { method: 'POST' }).catch(() => {});
+          await new Promise((r) => setTimeout(r, 1200));
+        }
       }
 
-      ({ wsPort } = await res.json());
+      if (!registered) throw new Error(lastErr || 'Failed to register stream');
     } catch (e: any) {
       setStatus('error');
       setErrorMsg(
-        e.message?.includes('fetch')
-          ? 'Relay server not running. Start it with: node server/rtsp-websocket-server.js'
+        e.message?.includes('fetch') || String(e.message || '').toLowerCase().includes('relay')
+          ? 'Relay offline. Starting automatically... retry in 2s.'
           : `Failed to start stream: ${e.message}`
       );
+      isStartingRef.current = false;
       return;
     }
 
@@ -63,7 +89,10 @@ export default function TapoCameraStream({
     try {
       const JSMpeg = (await import('jsmpeg-player')).default;
 
-      if (!canvasRef.current) return;
+      if (!canvasRef.current) {
+        isStartingRef.current = false;
+        return;
+      }
 
       // Destroy previous player if any
       if (playerRef.current) {
@@ -71,7 +100,8 @@ export default function TapoCameraStream({
         playerRef.current = null;
       }
 
-      playerRef.current = new JSMpeg.Player(`ws://localhost:${wsPort}`, {
+      const wsHost = window.location.hostname || 'localhost';
+      playerRef.current = new JSMpeg.Player(`ws://${wsHost}:${wsPort}`, {
         canvas: canvasRef.current,
         autoplay,
         audio: false,
@@ -79,23 +109,86 @@ export default function TapoCameraStream({
         onPlay: () => setStatus('playing'),
         onStalled: () => setStatus('stalled'),
       });
+      isStartingRef.current = false;
     } catch (e: any) {
       setStatus('error');
       setErrorMsg(`Player error: ${e.message}`);
+      isStartingRef.current = false;
+    }
+  };
+
+  const stopStream = (stopRelay = false) => {
+    if (stopRelay) {
+      fetch(`${RELAY_API_BASE}/camera/${encodeURIComponent(camera.id)}`, {
+        method: 'DELETE',
+      }).catch(() => {});
+    }
+
+    if (playerRef.current) {
+      playerRef.current.destroy();
+      playerRef.current = null;
+    }
+  };
+
+  const checkCameraActive = async () => {
+    try {
+      const res = await fetch('/api/camera/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cameraIp: camera.ip }),
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return Boolean(data.active);
+    } catch {
+      return false;
     }
   };
 
   useEffect(() => {
-    if (autoplay) startStream();
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
 
-    return () => {
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const run = async () => {
+      if (cancelled) return;
+
+      if (!onlyWhenActive) {
+        if (autoplay) startStream();
+        return;
+      }
+
+      const active = await checkCameraActive();
+      if (cancelled) return;
+
+      if (active) {
+        if (!playerRef.current && !isStartingRef.current) {
+          startStream();
+        }
+      } else {
+        setStatus('sleeping');
+        setErrorMsg(null);
+        stopStream(true);
       }
     };
+
+    run();
+    if (onlyWhenActive) interval = setInterval(run, 15000);
+
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+      // Delay stop to avoid premature teardown during React dev effect re-runs.
+      stopTimerRef.current = setTimeout(() => {
+        stopStream(false);
+      }, 1200);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [camera.id]);
+  }, [camera.id, camera.ip, onlyWhenActive]);
 
   const statusColor: Record<StreamStatus, string> = {
     idle:        '#6b7280',
@@ -104,6 +197,7 @@ export default function TapoCameraStream({
     playing:     '#22c55e',
     error:       '#ef4444',
     stalled:     '#f59e0b',
+    sleeping:    '#9ca3af',
   };
 
   const statusLabel: Record<StreamStatus, string> = {
@@ -113,6 +207,7 @@ export default function TapoCameraStream({
     playing:     'Live',
     error:       'Error',
     stalled:     'Stalled',
+    sleeping:    'Waiting activity',
   };
 
   return (

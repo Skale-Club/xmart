@@ -13,9 +13,16 @@ This guide explains how to set up live streaming from TP-Link Tapo cameras in yo
 ## Prerequisites
 
 1. **TP-Link Tapo Camera** (models with RTSP support: C100, C200, C210, C310, etc.)
-2. **FFmpeg** installed on your system
+2. **FFmpeg** available (this project now uses bundled `ffmpeg-static` as fallback)
 3. **Node.js** v16 or higher
 4. **Local network** access to your cameras
+
+### Important Model Note (C120 and C403 Solar)
+
+- **C120**: usually works with RTSP (`stream1`/`stream2`) when Device Account is configured.
+- **C403 Solar**: battery/solar models may not expose RTSP/ONVIF reliably. If RTSP is unavailable, this app's current relay pipeline (RTSP -> FFmpeg -> WebSocket) cannot stream it.
+- In Tapo app, enable **Third-Party Compatibility**:
+  - `Me -> Tapo Lab -> Third-Party Compatibility -> On`
 
 ## Step 1: Enable RTSP on Tapo Camera
 
@@ -174,6 +181,11 @@ Examples:
 3. **Check firewall:**
    - Allow port 554 (RTSP)
    - Allow WebSocket ports (9999, 9998, 9997)
+
+4. **Check Tapo limitations:**
+   - Camera may allow only a limited number of simultaneous streams.
+   - Some firmwares disable RTSP/ONVIF if Tapo Care and SD recording are active together.
+   - For battery/solar devices (for example C403 Solar), RTSP may be unavailable by design.
 
 ### Poor Performance / Lag
 

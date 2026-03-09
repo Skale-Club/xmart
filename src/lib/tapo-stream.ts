@@ -8,6 +8,7 @@ export interface TapoCameraConfig {
   username: string;
   password: string;
   stream?: 'stream1' | 'stream2'; // stream1 = HD, stream2 = 360p
+  onDemand?: boolean; // Start stream only when camera is active/reachable
 }
 
 export interface StreamResponse {

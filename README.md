@@ -60,6 +60,12 @@ npm run dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Camera Notes (C120 / C403 Solar)
+
+- `C120`: should work with RTSP using camera **Device Account** credentials.
+- `C403 Solar`: as a battery/solar model, RTSP may not be available. If RTSP is not exposed by firmware, this project cannot stream it with the current RTSP relay architecture.
+- In Tapo app, enable third-party support: `Me -> Tapo Lab -> Third-Party Compatibility -> On`.
+
 ## Project Structure
 
 ```
