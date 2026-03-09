@@ -10,6 +10,20 @@ interface CameraStreamRequest {
   stream?: 'stream1' | 'stream2'; // stream1 = high quality, stream2 = 360p
 }
 
+function isPrivateIpv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) {
+    return false;
+  }
+
+  if (parts[0] === 10) return true;
+  if (parts[0] === 192 && parts[1] === 168) return true;
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+  if (parts[0] === 127) return true;
+
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: CameraStreamRequest = await request.json();
@@ -18,6 +32,16 @@ export async function POST(request: NextRequest) {
     if (!cameraIp || !username || !password) {
       return NextResponse.json(
         { error: 'Missing required fields: cameraIp, username, password' },
+        { status: 400 }
+      );
+    }
+
+    if (process.env.VERCEL === '1' && isPrivateIpv4(cameraIp)) {
+      return NextResponse.json(
+        {
+          error:
+            'Camera IP is private (LAN) and cannot be reached from Vercel cloud. Run xmarte/relay on your local network or via VPN/tunnel.',
+        },
         { status: 400 }
       );
     }
