@@ -3,18 +3,36 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+function getOwnerId(request: NextRequest): string | null {
+  const ownerId = request.headers.get('x-camera-owner');
+  if (!ownerId) return null;
+
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(ownerId) ? ownerId : null;
+}
+
 // GET - Get single camera
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const ownerId = getOwnerId(request);
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: 'Missing or invalid x-camera-owner header' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     const { data, error } = await supabase
       .from('cameras')
       .select('*')
       .eq('id', params.id)
+      .eq('owner_id', ownerId)
       .single();
 
     if (error) {
@@ -41,6 +59,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const ownerId = getOwnerId(request);
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: 'Missing or invalid x-camera-owner header' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     const body = await request.json();
@@ -76,6 +102,7 @@ export async function PUT(
       .from('cameras')
       .update(updates)
       .eq('id', params.id)
+      .eq('owner_id', ownerId)
       .select()
       .single();
 
@@ -103,12 +130,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const ownerId = getOwnerId(request);
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: 'Missing or invalid x-camera-owner header' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     const { error } = await supabase
       .from('cameras')
       .delete()
-      .eq('id', params.id);
+      .eq('id', params.id)
+      .eq('owner_id', ownerId);
 
     if (error) {
       console.error('Supabase error:', error);

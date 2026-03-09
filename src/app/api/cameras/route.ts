@@ -3,14 +3,32 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 
 export const dynamic = 'force-dynamic';
 
+function getOwnerId(request: NextRequest): string | null {
+  const ownerId = request.headers.get('x-camera-owner');
+  if (!ownerId) return null;
+
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(ownerId) ? ownerId : null;
+}
+
 // GET - List all cameras
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ownerId = getOwnerId(request);
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: 'Missing or invalid x-camera-owner header' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     const { data, error } = await supabase
       .from('cameras')
       .select('*')
+      .eq('owner_id', ownerId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -31,6 +49,14 @@ export async function GET() {
 // POST - Create a new camera
 export async function POST(request: NextRequest) {
   try {
+    const ownerId = getOwnerId(request);
+    if (!ownerId) {
+      return NextResponse.json(
+        { error: 'Missing or invalid x-camera-owner header' },
+        { status: 400 }
+      );
+    }
+
     const supabase = getSupabaseServerClient();
 
     const body = await request.json();
@@ -65,6 +91,7 @@ export async function POST(request: NextRequest) {
       .from('cameras')
       .insert([
         {
+          owner_id: ownerId,
           name,
           ip,
           username,

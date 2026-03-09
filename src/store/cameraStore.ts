@@ -14,6 +14,17 @@ interface CameraStore {
 const STORAGE_KEY = 'tapo-cameras';
 const METADATA_KEY = 'tapo-cameras-meta';
 const LEGACY_KEYS = ['camera-storage', 'cameraStore'];
+const OWNER_KEY = 'xmarte-camera-owner-id';
+
+const getOwnerId = (): string => {
+  if (typeof window === 'undefined') return '00000000-0000-0000-0000-000000000000';
+  const current = localStorage.getItem(OWNER_KEY);
+  if (current) return current;
+
+  const ownerId = crypto.randomUUID();
+  localStorage.setItem(OWNER_KEY, ownerId);
+  return ownerId;
+};
 
 const loadFromStorage = (): TapoCameraConfig[] => {
   if (typeof window === 'undefined') return [];
@@ -104,7 +115,10 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
 
   loadCameras: async () => {
     try {
-      const res = await fetch('/api/cameras', { cache: 'no-store' });
+      const res = await fetch('/api/cameras', {
+        cache: 'no-store',
+        headers: { 'x-camera-owner': getOwnerId() },
+      });
       if (!res.ok) throw new Error(`Failed to load cameras: ${res.status}`);
 
       const data = await res.json();
@@ -126,7 +140,10 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
           for (const cam of local) {
             const created = await fetch('/api/cameras', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'x-camera-owner': getOwnerId(),
+              },
               body: JSON.stringify({
                 name: cam.name,
                 ip: cam.ip,
@@ -168,7 +185,10 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
   addCamera: async (camera) => {
     const res = await fetch('/api/cameras', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-camera-owner': getOwnerId(),
+      },
       body: JSON.stringify({
         name: camera.name,
         ip: camera.ip,
@@ -205,7 +225,10 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
   removeCamera: async (id) => {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
     if (isUuid) {
-      const res = await fetch(`/api/cameras/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/cameras/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-camera-owner': getOwnerId() },
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || 'Failed to delete camera from Supabase');
@@ -233,7 +256,10 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
       if (Object.keys(payload).length > 0) {
         const res = await fetch(`/api/cameras/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-camera-owner': getOwnerId(),
+          },
           body: JSON.stringify(payload),
         });
         if (!res.ok) {
