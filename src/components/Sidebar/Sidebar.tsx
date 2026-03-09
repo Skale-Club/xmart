@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
     Home,
     Lightbulb,
@@ -11,30 +13,34 @@ import {
     Plus,
     Camera,
 } from 'lucide-react';
+import { ROUTES } from '@/config/routes';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
-    activeTab: string;
-    onTabChange: (tab: string) => void;
     onAddDevice?: () => void;
 }
 
 const ADD_LABELS: Record<string, string> = {
-    cameras: 'Add Camera',
+    [ROUTES.CAMERAS.slug]: 'Add Camera',
 };
 
-export default function Sidebar({ activeTab, onTabChange, onAddDevice }: SidebarProps) {
+export default function Sidebar({ onAddDevice }: SidebarProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const pathname = usePathname();
 
     const menuItems = [
-        { id: 'dashboard',   label: 'Dashboard',   icon: <Home size={20} /> },
-        { id: 'devices',     label: 'Devices',     icon: <Lightbulb size={20} /> },
-        { id: 'cameras',     label: 'Cameras',     icon: <Camera size={20} /> },
-        { id: 'automations', label: 'Automations', icon: <Clock size={20} /> },
-        { id: 'settings',    label: 'Settings',    icon: <Settings size={20} /> },
+        { id: 'dashboard', label: ROUTES.DASHBOARD.label, icon: <Home size={20} />, href: ROUTES.DASHBOARD.slug },
+        { id: 'devices', label: ROUTES.DEVICES.label, icon: <Lightbulb size={20} />, href: ROUTES.DEVICES.slug },
+        { id: 'cameras', label: ROUTES.CAMERAS.label, icon: <Camera size={20} />, href: ROUTES.CAMERAS.slug },
+        { id: 'automations', label: ROUTES.AUTOMATIONS.label, icon: <Clock size={20} />, href: ROUTES.AUTOMATIONS.slug },
+        { id: 'settings', label: ROUTES.SETTINGS.label, icon: <Settings size={20} />, href: ROUTES.SETTINGS.slug },
     ];
 
-    const addLabel = ADD_LABELS[activeTab] ?? 'Add Device';
+    const addLabel = ADD_LABELS[pathname] ?? 'Add Device';
+
+    const isActive = (href: string) => {
+        return pathname === href || pathname.startsWith(href + '/');
+    };
 
     return (
         <>
@@ -55,17 +61,15 @@ export default function Sidebar({ activeTab, onTabChange, onAddDevice }: Sidebar
 
                 <nav className={styles.nav}>
                     {menuItems.map((item) => (
-                        <button
+                        <Link
                             key={item.id}
-                            className={`${styles.navItem} ${activeTab === item.id ? styles.active : ''}`}
-                            onClick={() => {
-                                onTabChange(item.id);
-                                setIsOpen(false);
-                            }}
+                            href={item.href}
+                            className={`${styles.navItem} ${isActive(item.href) ? styles.active : ''}`}
+                            onClick={() => setIsOpen(false)}
                         >
                             {item.icon}
                             <span>{item.label}</span>
-                        </button>
+                        </Link>
                     ))}
                 </nav>
 
