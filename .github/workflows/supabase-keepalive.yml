@@ -2,7 +2,8 @@ name: Supabase Keepalive
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    # Run every 4 hours to ensure frequent activity
+    - cron: "0 */4 * * *"
   workflow_dispatch:
 
 jobs:
@@ -17,40 +18,62 @@ jobs:
           set -euo pipefail
 
           EXPECTED_PATH="/api/cron/supabase-keepalive"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           if [ -z "$KEEPALIVE_URL" ] || [ -z "$KEEPALIVE_SECRET" ]; then
-            echo "Missing KEEPALIVE_URL or KEEPALIVE_SECRET repository secret."
+            echo "❌ Missing KEEPALIVE_URL or KEEPALIVE_SECRET repository secret."
             exit 1
           fi
 
-          echo "Pinging configured keepalive URL..."
-          status="$(curl --output /dev/null --write-out "%{http_code}" --show-error --silent \
+          echo "🔄 [$TIMESTAMP] Pinging keepalive endpoint..."
+          echo "   URL: $KEEPALIVE_URL"
+
+          # Make the request and capture both body and status
+          response="$(curl --show-error --silent \
             -H "Authorization: Bearer $KEEPALIVE_SECRET" \
+            -w "\n---STATUS---%{http_code}" \
             "$KEEPALIVE_URL" || true)"
 
+          status="$(echo "$response" | grep -o '---STATUS---[0-9]*' | sed 's/---STATUS---//')"
+          body="$(echo "$response" | sed '/---STATUS---/d')"
+
           if [ "$status" = "200" ]; then
-            echo "Keepalive request succeeded."
+            echo "✅ Keepalive request succeeded!"
+            echo "   Response: $body"
             exit 0
           fi
 
-          echo "Configured URL returned HTTP $status."
+          echo "⚠️ Configured URL returned HTTP $status"
+          echo "   Response: $body"
 
           origin="$(printf '%s' "$KEEPALIVE_URL" | sed -E 's#^(https?://[^/]+).*$#\1#')"
           fallback_url="${origin}${EXPECTED_PATH}"
 
           if [ "$status" = "404" ] && [ "$fallback_url" != "$KEEPALIVE_URL" ]; then
-            echo "Trying fallback keepalive URL on same host..."
-            fallback_status="$(curl --output /dev/null --write-out "%{http_code}" --show-error --silent \
+            echo "🔄 Trying fallback keepalive URL on same host..."
+            echo "   Fallback URL: $fallback_url"
+            
+            fallback_response="$(curl --show-error --silent \
               -H "Authorization: Bearer $KEEPALIVE_SECRET" \
+              -w "\n---STATUS---%{http_code}" \
               "$fallback_url" || true)"
 
+            fallback_status="$(echo "$fallback_response" | grep -o '---STATUS---[0-9]*' | sed 's/---STATUS---//')"
+            fallback_body="$(echo "$fallback_response" | sed '/---STATUS---/d')"
+
             if [ "$fallback_status" = "200" ]; then
-              echo "Fallback keepalive request succeeded: $fallback_url"
+              echo "✅ Fallback keepalive request succeeded!"
+              echo "   Response: $fallback_body"
               exit 0
             fi
 
-            echo "Fallback URL returned HTTP $fallback_status."
+            echo "❌ Fallback URL returned HTTP $fallback_status"
+            echo "   Response: $fallback_body"
           fi
 
-          echo "Keepalive failed. Ensure KEEPALIVE_URL points to ${EXPECTED_PATH} and KEEPALIVE_SECRET matches server config."
+          echo ""
+          echo "❌ Keepalive failed!"
+          echo "   Ensure KEEPALIVE_URL points to ${EXPECTED_PATH}"
+          echo "   Ensure KEEPALIVE_SECRET matches server config"
+          echo "   Check that the deployed app is running"
           exit 1

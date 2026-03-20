@@ -144,6 +144,52 @@ curl -X POST http://localhost:4000/api/cameras \
   }'
 ```
 
+## Preventing Supabase Pausing (Free Tier)
+
+Supabase pauses free projects after 7 days of inactivity. To prevent this, this project includes an automated keepalive system.
+
+### How It Works
+
+1. **API Endpoint**: `/api/cron/supabase-keepalive` - Performs lightweight database queries
+2. **GitHub Actions**: `.github/workflows/supabase-keepalive.yml` - Pings the endpoint every 4 hours
+
+### Setup Instructions
+
+1. **Deploy your app** to Vercel (or another hosting provider)
+
+2. **Generate a secret token**:
+   ```bash
+   # Generate a random secret (or use any secure string)
+   openssl rand -hex 32
+   ```
+
+3. **Add environment variable to your deployed app**:
+   - Variable: `KEEPALIVE_SECRET`
+   - Value: Your generated secret
+
+4. **Add GitHub repository secrets** (Settings → Secrets and variables → Actions):
+   - `KEEPALIVE_URL`: Your deployed app URL + `/api/cron/supabase-keepalive`
+     - Example: `https://your-app.vercel.app/api/cron/supabase-keepalive`
+   - `KEEPALIVE_SECRET`: The same secret you used in step 3
+
+5. **Enable GitHub Actions**:
+   - Go to your repository → Actions tab
+   - Enable workflows if prompted
+   - The workflow will run automatically every 4 hours
+
+### Manual Trigger
+
+You can also manually trigger the keepalive:
+- Go to Actions → Supabase Keepalive → Run workflow
+
+### Verify It's Working
+
+Check the Actions tab for successful runs. You should see:
+```
+✅ Keepalive request succeeded!
+   Response: {"ok":true,"message":"Supabase keepalive successful",...}
+```
+
 ## Need Help?
 
 - 📖 Check [docs folder](./README.md) for detailed guides
