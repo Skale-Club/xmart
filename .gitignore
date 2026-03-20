@@ -12,6 +12,7 @@ node_modules/
 
 # Production
 /build
+/dist
 
 # Misc
 .DS_Store
@@ -39,3 +40,29 @@ next-env.d.ts
 .vscode/
 *.swp
 *.swo
+
+# AI Assistants
+.claude/
+.cursor/
+.aider*
+.copilot/
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Lock files (keep package-lock.json)
+yarn.lock
+pnpm-lock.yaml
