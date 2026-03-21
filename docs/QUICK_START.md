@@ -186,7 +186,7 @@ You can also manually trigger the keepalive:
 
 Check the Actions tab for successful runs. You should see:
 ```
-✅ Keepalive request succeeded!
+Keepalive request succeeded.
    Response: {"ok":true,"message":"Supabase keepalive successful",...}
 ```
 
