@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { AuthResponse, UserResponse } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -8,7 +8,7 @@ import styles from './page.module.css'
 
 type AuthMode = 'login' | 'signup'
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [mode, setMode] = useState<AuthMode>('login')
@@ -85,80 +85,101 @@ export default function LoginPage() {
     }
 
     return (
+        <section className={styles.panel}>
+            <div className={styles.copy}>
+                <span className={styles.eyebrow}>Supabase Auth</span>
+                <h1>{mode === 'login' ? 'Entrar na sua casa conectada' : 'Criar sua conta'}</h1>
+                <p>
+                    A partir de agora, cameras e demais recursos passam a ficar ligados ao usuario autenticado
+                    no Supabase, nao a um UUID salvo no navegador.
+                </p>
+            </div>
+
+            <form className={styles.form} onSubmit={handleSubmit}>
+                <div className={styles.modeSwitch}>
+                    <button
+                        className={mode === 'login' ? styles.modeActive : styles.modeButton}
+                        onClick={() => setMode('login')}
+                        type="button"
+                    >
+                        Login
+                    </button>
+                    <button
+                        className={mode === 'signup' ? styles.modeActive : styles.modeButton}
+                        onClick={() => setMode('signup')}
+                        type="button"
+                    >
+                        Cadastro
+                    </button>
+                </div>
+
+                {mode === 'signup' && (
+                    <label className={styles.field}>
+                        <span>Nome</span>
+                        <input
+                            className={styles.input}
+                            value={displayName}
+                            onChange={(event) => setDisplayName(event.target.value)}
+                            placeholder="Seu nome"
+                            type="text"
+                        />
+                    </label>
+                )}
+
+                <label className={styles.field}>
+                    <span>Email</span>
+                    <input
+                        className={styles.input}
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="voce@exemplo.com"
+                        required
+                        type="email"
+                    />
+                </label>
+
+                <label className={styles.field}>
+                    <span>Senha</span>
+                    <input
+                        className={styles.input}
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        minLength={6}
+                        required
+                        type="password"
+                    />
+                </label>
+
+                {error && <p className={styles.error}>{error}</p>}
+                {message && <p className={styles.message}>{message}</p>}
+
+                <button className={styles.submit} disabled={isSubmitting} type="submit">
+                    {isSubmitting ? 'Processando...' : mode === 'login' ? 'Entrar' : 'Criar conta e entrar'}
+                </button>
+            </form>
+        </section>
+    )
+}
+
+function LoginFallback() {
+    return (
         <main className={styles.page}>
             <section className={styles.panel}>
                 <div className={styles.copy}>
                     <span className={styles.eyebrow}>Supabase Auth</span>
-                    <h1>{mode === 'login' ? 'Entrar na sua casa conectada' : 'Criar sua conta'}</h1>
-                    <p>
-                        A partir de agora, cameras e demais recursos passam a ficar ligados ao usuario autenticado
-                        no Supabase, nao a um UUID salvo no navegador.
-                    </p>
+                    <h1>Carregando...</h1>
                 </div>
-
-                <form className={styles.form} onSubmit={handleSubmit}>
-                    <div className={styles.modeSwitch}>
-                        <button
-                            className={mode === 'login' ? styles.modeActive : styles.modeButton}
-                            onClick={() => setMode('login')}
-                            type="button"
-                        >
-                            Login
-                        </button>
-                        <button
-                            className={mode === 'signup' ? styles.modeActive : styles.modeButton}
-                            onClick={() => setMode('signup')}
-                            type="button"
-                        >
-                            Cadastro
-                        </button>
-                    </div>
-
-                    {mode === 'signup' && (
-                        <label className={styles.field}>
-                            <span>Nome</span>
-                            <input
-                                className={styles.input}
-                                value={displayName}
-                                onChange={(event) => setDisplayName(event.target.value)}
-                                placeholder="Seu nome"
-                                type="text"
-                            />
-                        </label>
-                    )}
-
-                    <label className={styles.field}>
-                        <span>Email</span>
-                        <input
-                            className={styles.input}
-                            value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            placeholder="voce@exemplo.com"
-                            required
-                            type="email"
-                        />
-                    </label>
-
-                    <label className={styles.field}>
-                        <span>Senha</span>
-                        <input
-                            className={styles.input}
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                            minLength={6}
-                            required
-                            type="password"
-                        />
-                    </label>
-
-                    {error && <p className={styles.error}>{error}</p>}
-                    {message && <p className={styles.message}>{message}</p>}
-
-                    <button className={styles.submit} disabled={isSubmitting} type="submit">
-                        {isSubmitting ? 'Processando...' : mode === 'login' ? 'Entrar' : 'Criar conta e entrar'}
-                    </button>
-                </form>
             </section>
         </main>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<LoginFallback />}>
+            <main className={styles.page}>
+                <LoginContent />
+            </main>
+        </Suspense>
     )
 }
