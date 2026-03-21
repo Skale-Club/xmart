@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { getRelayStatus } from '@/lib/relay-server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const res = await fetch('http://localhost:9997/health', {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return NextResponse.json({ online: true, streams: data.streams ?? [] });
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-    return NextResponse.json({ online: false, streams: [] });
+
+    const data = getRelayStatus();
+    return NextResponse.json(data);
   } catch {
     return NextResponse.json({ online: false, streams: [] });
   }

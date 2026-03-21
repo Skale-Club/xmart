@@ -24,24 +24,45 @@ export default function TapoCameraStream({
 }: TapoCameraStreamProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<any>(null);
-  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(false);
   const [status, setStatus] = useState<StreamStatus>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const isStartingRef = useRef(false);
 
+  const safeSetStatus = (nextStatus: StreamStatus) => {
+    if (mountedRef.current) setStatus(nextStatus);
+  };
+
+  const safeSetError = (message: string | null) => {
+    if (mountedRef.current) setErrorMsg(message);
+  };
+
+  const destroyPlayer = () => {
+    const player = playerRef.current;
+    playerRef.current = null;
+
+    if (!player) return;
+
+    try {
+      player.destroy?.();
+    } catch {
+      // Ignore teardown races from third-party DOM cleanup in dev/StrictMode.
+    }
+  };
+
   const startStream = async () => {
-    if (stopTimerRef.current) {
-      clearTimeout(stopTimerRef.current);
-      stopTimerRef.current = null;
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
     }
 
     if (isStartingRef.current) return;
     isStartingRef.current = true;
-    setStatus('registering');
-    setErrorMsg(null);
+    safeSetStatus('registering');
+    safeSetError(null);
 
-    // 1. Register camera with relay server -> get WS port
-    let wsPort: number = 0;
+    let wsPort = 0;
     try {
       let lastErr = '';
       let registered = false;
@@ -74,31 +95,42 @@ export default function TapoCameraStream({
 
       if (!registered) throw new Error(lastErr || 'Failed to register stream');
     } catch (e: any) {
-      setStatus('error');
-      setErrorMsg(
-        e.message?.includes('fetch') || String(e.message || '').toLowerCase().includes('relay')
-          ? 'Relay offline. Starting automatically... retry in 2s.'
-          : `Failed to start stream: ${e.message}`
+      const message = String(e.message || '');
+      const waitingForVideo = message.includes('fetch') || message.toLowerCase().includes('relay');
+
+      safeSetStatus('error');
+      safeSetError(
+        waitingForVideo
+          ? 'Preparing the live view. Please wait a moment.'
+          : `Could not start this camera automatically: ${message}`
       );
+
+      if (waitingForVideo) {
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          startStream();
+        }, 2000);
+      }
+
       isStartingRef.current = false;
       return;
     }
 
-    // 2. Connect JSMpeg to the WebSocket
-    setStatus('connecting');
+    if (!mountedRef.current) {
+      isStartingRef.current = false;
+      return;
+    }
+
+    safeSetStatus('connecting');
     try {
       const JSMpeg = (await import('jsmpeg-player')).default;
 
-      if (!canvasRef.current) {
+      if (!mountedRef.current || !canvasRef.current) {
         isStartingRef.current = false;
         return;
       }
 
-      // Destroy previous player if any
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
+      destroyPlayer();
 
       const wsHost = window.location.hostname || 'localhost';
       playerRef.current = new JSMpeg.Player(`ws://${wsHost}:${wsPort}`, {
@@ -106,13 +138,13 @@ export default function TapoCameraStream({
         autoplay,
         audio: false,
         videoBufferSize: 512 * 1024,
-        onPlay: () => setStatus('playing'),
-        onStalled: () => setStatus('stalled'),
+        onPlay: () => safeSetStatus('playing'),
+        onStalled: () => safeSetStatus('stalled'),
       });
       isStartingRef.current = false;
     } catch (e: any) {
-      setStatus('error');
-      setErrorMsg(`Player error: ${e.message}`);
+      safeSetStatus('error');
+      safeSetError(`Could not open the live view: ${e.message}`);
       isStartingRef.current = false;
     }
   };
@@ -124,10 +156,7 @@ export default function TapoCameraStream({
       }).catch(() => {});
     }
 
-    if (playerRef.current) {
-      playerRef.current.destroy();
-      playerRef.current = null;
-    }
+    destroyPlayer();
   };
 
   const checkCameraActive = async () => {
@@ -146,9 +175,11 @@ export default function TapoCameraStream({
   };
 
   useEffect(() => {
-    if (stopTimerRef.current) {
-      clearTimeout(stopTimerRef.current);
-      stopTimerRef.current = null;
+    mountedRef.current = true;
+
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
     }
 
     let cancelled = false;
@@ -170,8 +201,8 @@ export default function TapoCameraStream({
           startStream();
         }
       } else {
-        setStatus('sleeping');
-        setErrorMsg(null);
+        safeSetStatus('sleeping');
+        safeSetError(null);
         stopStream(true);
       }
     };
@@ -181,33 +212,35 @@ export default function TapoCameraStream({
 
     return () => {
       cancelled = true;
+      mountedRef.current = false;
       if (interval) clearInterval(interval);
-      // Delay stop to avoid premature teardown during React dev effect re-runs.
-      stopTimerRef.current = setTimeout(() => {
-        stopStream(false);
-      }, 1200);
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+      stopStream(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera.id, camera.ip, onlyWhenActive]);
 
   const statusColor: Record<StreamStatus, string> = {
-    idle:        '#6b7280',
+    idle: '#6b7280',
     registering: '#f59e0b',
-    connecting:  '#3b82f6',
-    playing:     '#22c55e',
-    error:       '#ef4444',
-    stalled:     '#f59e0b',
-    sleeping:    '#9ca3af',
+    connecting: '#3b82f6',
+    playing: '#22c55e',
+    error: '#ef4444',
+    stalled: '#f59e0b',
+    sleeping: '#9ca3af',
   };
 
   const statusLabel: Record<StreamStatus, string> = {
-    idle:        'Idle',
+    idle: 'Idle',
     registering: 'Starting...',
-    connecting:  'Connecting...',
-    playing:     'Live',
-    error:       'Error',
-    stalled:     'Stalled',
-    sleeping:    'Waiting activity',
+    connecting: 'Connecting...',
+    playing: 'Live',
+    error: 'Error',
+    stalled: 'Stalled',
+    sleeping: 'Waiting',
   };
 
   return (
@@ -215,24 +248,34 @@ export default function TapoCameraStream({
       <div style={{ position: 'relative', background: '#000', borderRadius: 8, overflow: 'hidden' }}>
         <canvas ref={canvasRef} width={width} height={height} style={{ width: '100%', height: 'auto', display: 'block' }} />
 
-        {/* Overlay for non-playing states */}
         {status !== 'playing' && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.75)',
-            gap: 12, padding: 16,
-          }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.75)',
+              gap: 12,
+              padding: 16,
+            }}
+          >
             {status === 'error' ? (
               <>
                 <span style={{ color: '#ef4444', fontSize: 14, textAlign: 'center', maxWidth: 320 }}>{errorMsg}</span>
                 <button
                   onClick={startStream}
                   style={{
-                    padding: '8px 20px', borderRadius: 8, border: 'none',
-                    background: '#3b82f6', color: '#fff', fontSize: 13,
-                    cursor: 'pointer', fontWeight: 600,
+                    padding: '8px 20px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: '#3b82f6',
+                    color: '#fff',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    fontWeight: 600,
                   }}
                 >
                   Retry
@@ -245,7 +288,6 @@ export default function TapoCameraStream({
         )}
       </div>
 
-      {/* Camera info bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 600 }}>{camera.name}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -1,29 +1,24 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseAdminClient } from '@/lib/supabase-admin'
 
 export async function GET() {
     try {
-        const supabase = getSupabaseClient()
+        const supabase = getSupabaseAdminClient()
 
-        // Test the connection by querying the Supabase health check
-        const { error } = await supabase.from('_test_connection').select('*').limit(1)
+        const { error } = await supabase.from('profiles').select('id').limit(1)
 
-        // If the table doesn't exist, that's actually fine - it means we're connected
-        // but just don't have that table. The important thing is no connection error.
-        if (error && error.code !== 'PGRST116') {
-            // PGRST116 = table doesn't exist, which is expected
-            // Any other error might be a connection issue
+        if (error) {
             return NextResponse.json({
-                status: 'connected',
-                message: 'Successfully connected to Supabase!',
+                status: 'error',
+                message: 'Connected to Supabase, but schema is not ready yet.',
+                error: error.message,
                 project: 'nevdmnluvegwmjmgmjef',
-                note: 'Ready to create tables and use the database.'
-            })
+            }, { status: 500 })
         }
 
         return NextResponse.json({
             status: 'connected',
-            message: 'Successfully connected to Supabase!',
+            message: 'Successfully connected to Supabase with the current schema.',
             project: 'nevdmnluvegwmjmgmjef'
         })
     } catch (err) {

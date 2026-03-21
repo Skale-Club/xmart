@@ -27,7 +27,10 @@ npm install
 # 2. Configure environment (add your Supabase credentials)
 cp .env.local.example .env.local
 
-# 3. Setup database (run supabase/schema.sql in Supabase dashboard)
+# 3. Setup database and auth
+supabase login
+supabase link --project-ref your-project-ref
+supabase db push
 
 # 4. Start the app
 npm run dev -- -p 4000

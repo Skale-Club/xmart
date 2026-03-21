@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +27,11 @@ function isPrivateIpv4(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body: CameraStreamRequest = await request.json();
     const { cameraIp, username, password, stream = 'stream1' } = body;
 

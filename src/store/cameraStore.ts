@@ -14,17 +14,6 @@ interface CameraStore {
 const STORAGE_KEY = 'tapo-cameras';
 const METADATA_KEY = 'tapo-cameras-meta';
 const LEGACY_KEYS = ['camera-storage', 'cameraStore'];
-const OWNER_KEY = 'xmarte-camera-owner-id';
-
-const getOwnerId = (): string => {
-  if (typeof window === 'undefined') return '00000000-0000-0000-0000-000000000000';
-  const current = localStorage.getItem(OWNER_KEY);
-  if (current) return current;
-
-  const ownerId = crypto.randomUUID();
-  localStorage.setItem(OWNER_KEY, ownerId);
-  return ownerId;
-};
 
 const loadFromStorage = (): TapoCameraConfig[] => {
   if (typeof window === 'undefined') return [];
@@ -115,10 +104,7 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
 
   loadCameras: async () => {
     try {
-      const res = await fetch('/api/cameras', {
-        cache: 'no-store',
-        headers: { 'x-camera-owner': getOwnerId() },
-      });
+      const res = await fetch('/api/cameras', { cache: 'no-store' });
       if (!res.ok) throw new Error(`Failed to load cameras: ${res.status}`);
 
       const data = await res.json();
@@ -142,7 +128,6 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-camera-owner': getOwnerId(),
               },
               body: JSON.stringify({
                 name: cam.name,
@@ -175,11 +160,10 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
       saveToStorage(merged);
       return;
     } catch (error) {
-      console.error('Error loading cameras from API, falling back to localStorage:', error);
+      console.error('Error loading cameras from API:', error);
     }
 
-    const fallback = mergeOnDemandMeta(loadFromStorage());
-    set({ cameras: fallback });
+    set({ cameras: [] });
   },
 
   addCamera: async (camera) => {
@@ -187,7 +171,6 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-camera-owner': getOwnerId(),
       },
       body: JSON.stringify({
         name: camera.name,
@@ -227,7 +210,6 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
     if (isUuid) {
       const res = await fetch(`/api/cameras/${id}`, {
         method: 'DELETE',
-        headers: { 'x-camera-owner': getOwnerId() },
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -258,7 +240,6 @@ export const useCameraStore = create<CameraStore>((set, get) => ({
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'x-camera-owner': getOwnerId(),
           },
           body: JSON.stringify(payload),
         });

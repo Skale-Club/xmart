@@ -42,7 +42,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
     const camera = { id: `camera_${Date.now()}`, ...formData };
 
     if (!validateCameraConfig(camera)) {
-      setError('Check all fields — name, valid IP, username and password are required.');
+      setError('Check all fields: name, valid IP, username, and password are required.');
       return;
     }
 
@@ -52,7 +52,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
       setTestOk(false);
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to save camera to database.');
+      setError(err?.message || 'Failed to save camera.');
     }
   };
 
@@ -62,6 +62,8 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
     setTestOk(false);
 
     try {
+      await fetch('/api/relay/start', { method: 'POST' }).catch(() => {});
+
       const res = await fetch('/api/camera/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -75,11 +77,16 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Connection failed.');
+        const message = String(data.error || 'Connection failed.');
+        if (message.toLowerCase().includes('ffmpeg') || message.toLowerCase().includes('relay')) {
+          throw new Error('We could not verify the video automatically right now. You can still save the camera and try opening it.');
+        }
+        throw new Error(message);
       }
+
       setTestOk(true);
     } catch (e: any) {
-      setError(e.message || 'Connection failed. Check the IP, username and password.');
+      setError(e.message || 'Connection failed. Check the IP, username, and password.');
     } finally {
       setIsTesting(false);
     }
@@ -94,8 +101,6 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
   return (
     <div className={styles.overlay} onClick={handleOverlayClick}>
       <div className={styles.modal}>
-
-        {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.iconWrap}>
@@ -103,7 +108,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
             </div>
             <div>
               <div className={styles.title}>Add Tapo Camera</div>
-              <div className={styles.subtitle}>Connect a Tapo camera via RTSP</div>
+              <div className={styles.subtitle}>Add your camera details to start live view</div>
             </div>
           </div>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
@@ -111,9 +116,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className={styles.form}>
-
           <div className={styles.field}>
             <label className={styles.label} htmlFor="cam-name">Camera Name</label>
             <input
@@ -122,7 +125,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
               type="text"
               value={formData.name}
               onChange={e => set('name', e.target.value)}
-              placeholder="e.g., Front Door, Backyard"
+              placeholder="Front Door"
               autoFocus
               required
             />
@@ -139,32 +142,32 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
               placeholder="192.168.1.100"
               required
             />
-            <span className={styles.hint}>Find in your router's DHCP list or Tapo app</span>
+            <span className={styles.hint}>Find it in the Tapo app or your router device list</span>
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="cam-user">Device Account Username</label>
+            <label className={styles.label} htmlFor="cam-user">Camera Username</label>
             <input
               id="cam-user"
               className={styles.input}
               type="text"
               value={formData.username}
               onChange={e => set('username', e.target.value)}
-              placeholder="Device account username"
+              placeholder="Camera username"
               required
             />
-            <span className={styles.hint}>Tapo app → Settings → Advanced → Device Account</span>
+            <span className={styles.hint}>Use the username you created for this camera in the Tapo app</span>
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="cam-pass">Device Account Password</label>
+            <label className={styles.label} htmlFor="cam-pass">Camera Password</label>
             <input
               id="cam-pass"
               className={styles.input}
               type="password"
               value={formData.password}
               onChange={e => set('password', e.target.value)}
-              placeholder="Device account password"
+              placeholder="Camera password"
               required
             />
           </div>
@@ -178,7 +181,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
               onChange={e => set('stream', e.target.value)}
             >
               <option value="stream1">High Quality (1080p)</option>
-              <option value="stream2">Low Quality (360p) — less lag</option>
+              <option value="stream2">Lower Quality (faster)</option>
             </select>
           </div>
 
@@ -191,7 +194,7 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
                 onChange={e => set('onDemand', e.target.checked)}
                 style={{ marginRight: 8 }}
               />
-              Start only when active (recommended for battery/solar cameras)
+              Start only when the camera is active
             </label>
           </div>
 
@@ -205,13 +208,11 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
           {testOk && (
             <div className={styles.success}>
               <CheckCircle size={15} />
-              Connection successful!
+              Camera connection looks good.
             </div>
           )}
-
         </form>
 
-        {/* Footer */}
         <div className={styles.footer}>
           <button type="button" className={styles.cancelBtn} onClick={onClose}>
             Cancel
@@ -223,14 +224,13 @@ export default function AddCameraModal({ isOpen, onClose }: AddCameraModalProps)
             disabled={!canTest}
           >
             <Wifi size={15} />
-            {isTesting ? 'Testing…' : 'Test'}
+            {isTesting ? 'Checking...' : 'Test'}
           </button>
           <button type="submit" className={styles.submitBtn} onClick={handleSubmit}>
             <Plus size={16} />
             Add Camera
           </button>
         </div>
-
       </div>
     </div>
   );

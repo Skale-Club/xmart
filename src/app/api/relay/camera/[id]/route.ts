@@ -1,33 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { removeRelayCamera } from '@/lib/relay-server';
 
 export const dynamic = 'force-dynamic';
-
-const RELAY_URL = 'http://localhost:9997';
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = encodeURIComponent(params.id);
-    const res = await fetch(`${RELAY_URL}/camera/${id}`, {
-      method: 'DELETE',
-      signal: AbortSignal.timeout(5000),
-    });
-
-    const text = await res.text();
-    let data: any = {};
-    if (text) {
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { message: text };
-      }
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-    return NextResponse.json(data, { status: res.status });
+
+    const removed = removeRelayCamera(params.id);
+    if (!removed) {
+      return NextResponse.json({ error: 'Stream not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message ?? 'Could not reach relay server' },
+      { error: error?.message ?? 'Could not stop the camera stream' },
       { status: 503 }
     );
   }

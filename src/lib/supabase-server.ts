@@ -1,28 +1,35 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 function getSupabaseServerConfig() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-        throw new Error('Missing Supabase environment variables for server-side client.')
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Missing Supabase environment variables for authenticated server client.')
     }
 
-    return { supabaseUrl, supabaseServiceRoleKey }
+    return { supabaseUrl, supabaseAnonKey }
 }
 
-/**
- * Server-side Supabase client with service role key.
- * Use this ONLY in API routes or server-side code.
- * This client bypasses Row Level Security (RLS).
- */
-export function getSupabaseServerClient() {
-    const { supabaseUrl, supabaseServiceRoleKey } = getSupabaseServerConfig()
+export async function getSupabaseServerClient() {
+    const cookieStore = await cookies()
+    const { supabaseUrl, supabaseAnonKey } = getSupabaseServerConfig()
 
-    return createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
+    return createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+            getAll() {
+                return cookieStore.getAll()
+            },
+            setAll(cookiesToSet) {
+                try {
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        cookieStore.set(name, value, options)
+                    })
+                } catch {
+                    // Server Components cannot set cookies directly; middleware handles refreshes.
+                }
+            },
+        },
     })
 }

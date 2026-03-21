@@ -1,0 +1,49 @@
+# RTSP WebSocket Relay Server Dockerfile
+# Handles camera stream conversion from RTSP to WebSocket
+
+FROM node:20-alpine
+
+# Install FFmpeg and dependencies
+RUN apk add --no-cache \
+    ffmpeg \
+    libc6-compat
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy relay server code
+COPY server ./server
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 relay
+RUN adduser --system --uid 1001 relay
+
+# Set ownership
+RUN chown -R relay:relay /app
+
+# Switch to non-root user
+USER relay
+
+# Environment variables
+ENV NODE_ENV=production
+ENV HTTP_PORT=9997
+ENV WS_PORT_START=9001
+ENV FFMPEG_PATH=ffmpeg
+
+# Expose ports
+# HTTP API port
+EXPOSE 9997
+# WebSocket ports range (for multiple camera streams)
+EXPOSE 9001-9100
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9997/health || exit 1
+
+# Start the relay server
+CMD ["node", "server/rtsp-websocket-server.js"]

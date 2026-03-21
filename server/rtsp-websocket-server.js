@@ -82,6 +82,10 @@ const server = http.createServer((req, res) => {
           wsPort,
           ffmpegPath,
           ffmpegOptions: {
+            // Tapo cameras are much more reliable over TCP than default UDP transport.
+            '-rtsp_transport': 'tcp',
+            '-rtsp_flags': 'prefer_tcp',
+            '-rw_timeout': '5000000',
             '-stats': '',
             // mpeg1video accepts a limited set of framerates; 25 is broadly compatible.
             '-r': 25,

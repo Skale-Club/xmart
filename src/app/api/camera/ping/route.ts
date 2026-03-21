@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import net from 'net';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,11 @@ interface PingRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     const body: PingRequest = await request.json();
     const { cameraIp, port = 554 } = body;
 

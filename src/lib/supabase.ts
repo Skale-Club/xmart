@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 function getSupabaseConfig() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -11,9 +11,16 @@ function getSupabaseConfig() {
     return { supabaseUrl, supabaseAnonKey }
 }
 
+let browserClient: ReturnType<typeof createBrowserClient> | null = null
+
 export function getSupabaseClient() {
     const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
-    return createClient(supabaseUrl, supabaseAnonKey)
+
+    if (!browserClient) {
+        browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
+    }
+
+    return browserClient
 }
 
 // Types for your database tables can be added here

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseServerClient } from '@/lib/supabase-server'
+import { getSupabaseAdminClient } from '@/lib/supabase-admin'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const timestamp = new Date().toISOString()
 
     try {
-        const supabaseServer = getSupabaseServerClient()
+        const supabaseServer = getSupabaseAdminClient()
         const keepaliveSecret = process.env.KEEPALIVE_SECRET
         const authHeader = request.headers.get('authorization')
         const token = authHeader?.startsWith('Bearer ')

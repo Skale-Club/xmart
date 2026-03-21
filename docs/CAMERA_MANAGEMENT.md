@@ -19,21 +19,11 @@ The camera management system allows you to add, update, and remove Tapo cameras 
 
 ### 1. Database Setup
 
-First, apply the camera schema to your Supabase database:
+First, apply the schema and auth structure to your Supabase project:
 
-```sql
--- Run the SQL from supabase/schema.sql
--- Or use the Supabase SQL Editor to execute the camera tables creation
-```
-
-**Option 1: Using Supabase Dashboard**
-1. Go to your Supabase project
-2. Click on "SQL Editor" in the sidebar
-3. Copy and paste the camera schema from `supabase/schema.sql`
-4. Click "Run" to execute
-
-**Option 2: Using Supabase CLI** (if installed)
 ```bash
+supabase login
+supabase link --project-ref your-project-ref
 supabase db push
 ```
 

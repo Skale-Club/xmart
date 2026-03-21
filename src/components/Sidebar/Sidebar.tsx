@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import type { AuthChangeEvent, Session, UserResponse } from '@supabase/supabase-js';
 import {
     Home,
     Lightbulb,
@@ -12,8 +13,10 @@ import {
     X,
     Plus,
     Camera,
+    LogOut,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
+import { getSupabaseClient } from '@/lib/supabase';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -26,7 +29,25 @@ const ADD_LABELS: Record<string, string> = {
 
 export default function Sidebar({ onAddDevice }: SidebarProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [userEmail, setUserEmail] = useState<string | null>(null);
     const pathname = usePathname();
+    const router = useRouter();
+
+    useEffect(() => {
+        const supabase = getSupabaseClient();
+
+        supabase.auth.getUser().then((result: UserResponse) => {
+            setUserEmail(result.data.user?.email ?? null);
+        });
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+            setUserEmail(session?.user?.email ?? null);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
 
     const menuItems = [
         { id: 'dashboard', label: ROUTES.DASHBOARD.label, icon: <Home size={20} />, href: ROUTES.DASHBOARD.slug },
@@ -40,6 +61,13 @@ export default function Sidebar({ onAddDevice }: SidebarProps) {
 
     const isActive = (href: string) => {
         return pathname === href || pathname.startsWith(href + '/');
+    };
+
+    const handleSignOut = async () => {
+        const supabase = getSupabaseClient();
+        await supabase.auth.signOut();
+        router.replace('/login');
+        router.refresh();
     };
 
     return (
@@ -74,9 +102,17 @@ export default function Sidebar({ onAddDevice }: SidebarProps) {
                 </nav>
 
                 <div className={styles.footer}>
+                    <div className={styles.userCard}>
+                        <span className={styles.userLabel}>Signed in</span>
+                        <strong className={styles.userValue}>{userEmail ?? '...'}</strong>
+                    </div>
                     <button className={styles.addButton} onClick={onAddDevice}>
                         <Plus size={20} />
                         <span>{addLabel}</span>
+                    </button>
+                    <button className={styles.signOutButton} onClick={handleSignOut} type="button">
+                        <LogOut size={18} />
+                        <span>Sign out</span>
                     </button>
                 </div>
             </aside>

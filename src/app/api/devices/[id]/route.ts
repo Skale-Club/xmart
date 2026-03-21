@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { devices } from '@/data/devices';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // In-memory store
 let deviceStore = [...devices];
@@ -9,6 +10,14 @@ export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+        return NextResponse.json({
+            success: false,
+            error: 'Authentication required',
+        }, { status: 401 });
+    }
+
     const device = deviceStore.find(d => d.id === params.id);
 
     if (!device) {
@@ -30,6 +39,14 @@ export async function PUT(
     { params }: { params: { id: string } }
 ) {
     try {
+        const { user, error: authError } = await getAuthenticatedUser();
+        if (authError || !user) {
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication required',
+            }, { status: 401 });
+        }
+
         const body = await request.json();
         const index = deviceStore.findIndex(d => d.id === params.id);
 
@@ -64,6 +81,14 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
+        const { user, error: authError } = await getAuthenticatedUser();
+        if (authError || !user) {
+            return NextResponse.json({
+                success: false,
+                error: 'Authentication required',
+            }, { status: 401 });
+        }
+
         const body = await request.json();
         const index = deviceStore.findIndex(d => d.id === params.id);
 
@@ -100,6 +125,14 @@ export async function DELETE(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
+    const { user, error: authError } = await getAuthenticatedUser();
+    if (authError || !user) {
+        return NextResponse.json({
+            success: false,
+            error: 'Authentication required',
+        }, { status: 401 });
+    }
+
     const index = deviceStore.findIndex(d => d.id === params.id);
 
     if (index === -1) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import AddDeviceModal from '@/components/AddDeviceModal/AddDeviceModal';
 import AddCameraModal from '@/components/AddCameraModal';
@@ -16,6 +16,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
     const [isAddCameraOpen, setIsAddCameraOpen] = useState(false);
     const pathname = usePathname();
+
+    useEffect(() => {
+        const openCameraModal = () => setIsAddCameraOpen(true);
+        const openDeviceModal = () => setIsAddDeviceOpen(true);
+
+        window.addEventListener('xmarte:add-camera', openCameraModal);
+        window.addEventListener('xmarte:add-device', openDeviceModal);
+
+        return () => {
+            window.removeEventListener('xmarte:add-camera', openCameraModal);
+            window.removeEventListener('xmarte:add-device', openDeviceModal);
+        };
+    }, []);
 
     const handleAddClick = () => {
         if (pathname === ROUTES.CAMERAS.slug) {

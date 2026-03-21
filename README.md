@@ -2,7 +2,7 @@
 
 A personalized home automation system built with Next.js and React, featuring smart device control and live camera streaming from TP-Link Tapo cameras.
 
-> 📚 **[Complete Documentation](./docs/README.md)** | [API Reference](./docs/API_REFERENCE.md) | [Tapo Camera Setup](./docs/TAPO_CAMERA_SETUP.md) | [Project Overview](./docs/PROJECT_OVERVIEW.md)
+> 📚 **[Complete Documentation](./docs/README.md)** | [API Reference](./docs/API_REFERENCE.md) | [Docker Deployment](./docs/DOCKER.md) | [Tapo Camera Setup](./docs/TAPO_CAMERA_SETUP.md) | [Project Overview](./docs/PROJECT_OVERVIEW.md)
 
 ## Features
 
@@ -42,7 +42,7 @@ npm install
 2. Set up Supabase:
    - Create a new project at [supabase.com](https://supabase.com)
    - Go to Project Settings > API
-   - Copy your Project URL and anon/public key
+   - Copy your Project URL, anon/public key, and service role key
    - Copy `.env.local.example` to `.env.local`:
      ```bash
      cp .env.local.example .env.local
@@ -51,6 +51,13 @@ npm install
      ```
      NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
      NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+     SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+     ```
+   - Apply the schema and auth structure with Supabase CLI:
+     ```bash
+     supabase login
+     supabase link --project-ref your-project-ref
+     supabase db push
      ```
 
 3. Run the development server:
@@ -59,6 +66,33 @@ npm run dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Docker Deployment (Zima OS)
+
+This application is fully containerized and ready for deployment on Zima OS or any Docker-compatible system.
+
+### Quick Start with Docker
+
+1. Copy the Docker environment template:
+   ```bash
+   cp .env.docker .env
+   ```
+
+2. Edit `.env` with your Supabase credentials
+
+3. Build and run:
+   ```bash
+   docker-compose up -d
+   ```
+
+4. Access the application at `http://localhost:3000`
+
+### Services
+
+- **xmarte-web** (Port 3000): Main web application
+- **xmarte-relay** (Port 9997 + 9001-9100): RTSP to WebSocket relay for camera streams
+
+For detailed Docker configuration, see [Docker Documentation](./docs/DOCKER.md).
 
 ## Camera Notes (C120 / C403 Solar)
 
@@ -133,7 +167,7 @@ The application uses CSS custom properties for theming. Edit `src/app/globals.cs
 ## Future Enhancements
 
 - [ ] Real device integration (MQTT, Zigbee, etc.)
-- [ ] User authentication
+- [x] User authentication
 - [ ] Scene management
 - [ ] Energy monitoring
 - [ ] Mobile app (React Native)

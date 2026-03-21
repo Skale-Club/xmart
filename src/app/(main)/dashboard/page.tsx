@@ -47,7 +47,7 @@ export default function DashboardPage() {
         <div className={styles.dashboard}>
             <div className={styles.header}>
                 <div className={styles.greeting}>
-                    <h1>{greeting}, Vanildo!</h1>
+                    <h1>{greeting}</h1>
                     <p>Welcome to your smart home</p>
                 </div>
                 <div className={styles.quickStats}>
